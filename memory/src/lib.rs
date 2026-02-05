@@ -1,5 +1,7 @@
 use tabs::TabId;
 
+pub mod pressure;
+
 /// Snapshot of memory usage for a tab process.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct MemorySnapshot {

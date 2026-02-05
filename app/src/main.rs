@@ -6,6 +6,10 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use engine::{EngineController, WebKitEngine};
+use memory::pressure::{
+    DefaultMemoryPressureSource, MemoryPressureMonitorConfig, MemoryPressureReceiver,
+    MemoryPressureThresholds,
+};
 use scheduler::{ExecutionGovernor, JSExecutionGovernor};
 use tabs::{BasicTabManager, TabId, TabManager};
 
@@ -56,8 +60,18 @@ fn build_ui(app: &adw::Application) {
         .build();
     window.present();
 
+    let pressure_receiver = Rc::new(MemoryPressureReceiver::start(
+        DefaultMemoryPressureSource::default(),
+        MemoryPressureThresholds::default(),
+        MemoryPressureMonitorConfig::default(),
+    ));
+
     let governor_for_poll = Rc::clone(&governor);
+    let pressure_for_poll = Rc::clone(&pressure_receiver);
     glib::timeout_add_local(Duration::from_millis(250), move || {
+        if let Some(pressure) = pressure_for_poll.drain_latest() {
+            governor_for_poll.set_memory_pressure(pressure);
+        }
         governor_for_poll.poll();
         glib::ControlFlow::Continue
     });

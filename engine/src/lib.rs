@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 use gtk::prelude::*;
-use scheduler::{EngineScheduler, ExecutionBudget};
+use scheduler::{EngineScheduler, ExecutionBudget, ExecutionBudgetHints};
 use tabs::{TabId, TabState};
 use webkit6::prelude::*;
 
@@ -27,6 +27,9 @@ pub trait EngineController {
 
     /// Applies an execution budget to the tab.
     fn apply_execution_budget(&self, tab: TabId, budget: ExecutionBudget);
+
+    /// Applies advisory execution hints for the tab.
+    fn apply_execution_hints(&self, tab: TabId, hints: ExecutionBudgetHints);
 }
 
 /// WebKitGTK-backed engine controller.
@@ -104,6 +107,11 @@ impl EngineController for WebKitEngine {
         // TODO: Apply per-tab CPU and scheduling budgets when cgroup integration lands.
         self.with_view(tab, |_| {});
     }
+
+    fn apply_execution_hints(&self, tab: TabId, _hints: ExecutionBudgetHints) {
+        // TODO: Map advisory hints to WebKit settings once supported.
+        self.with_view(tab, |_| {});
+    }
 }
 
 impl EngineScheduler for WebKitEngine {
@@ -113,5 +121,9 @@ impl EngineScheduler for WebKitEngine {
 
     fn apply_execution_budget(&self, tab: TabId, budget: ExecutionBudget) {
         <Self as EngineController>::apply_execution_budget(self, tab, budget);
+    }
+
+    fn apply_execution_hints(&self, tab: TabId, hints: ExecutionBudgetHints) {
+        <Self as EngineController>::apply_execution_hints(self, tab, hints);
     }
 }

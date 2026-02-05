@@ -484,6 +484,7 @@ dependencies = [
  "gtk4",
  "libadwaita",
  "owl-engine",
+ "owl-memory",
  "owl-scheduler",
  "owl-tabs",
  "webkit6",
@@ -503,6 +504,7 @@ dependencies = [
 name = "owl-memory"
 version = "0.1.0"
 dependencies = [
+ "owl-scheduler",
  "owl-tabs",
 ]
 

@@ -9,3 +9,4 @@ description = "Memory tracking interfaces for OwL Browser."
 
 [dependencies]
 tabs = { path = "../tabs", package = "owl-tabs" }
+scheduler = { path = "../scheduler", package = "owl-scheduler" }

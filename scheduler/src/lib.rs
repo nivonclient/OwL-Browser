@@ -46,6 +46,122 @@ pub struct ExecutionBudget {
     pub tier: BudgetTier,
 }
 
+/// Advisory signals derived from budgets and memory pressure.
+///
+/// These hints do not enforce behavior and must not change JS semantics on their own.
+/// The engine layer may choose to apply them or ignore them based on capability.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct ExecutionBudgetHints {
+    /// Optional maximum timer frequency; `None` means no clamp requested.
+    pub max_timer_frequency: Option<Duration>,
+    /// Whether background JavaScript is generally allowed to run.
+    pub allow_background_js: bool,
+    /// Whether WebAssembly should be allowed under current policy.
+    pub allow_wasm: bool,
+    /// Whether workers should be allowed under current policy.
+    pub allow_workers: bool,
+    /// Hint that the engine may prefer to suspend if safe.
+    pub prefer_suspend: bool,
+}
+
+impl ExecutionBudgetHints {
+    const fn new(
+        max_timer_frequency: Option<Duration>,
+        allow_background_js: bool,
+        allow_wasm: bool,
+        allow_workers: bool,
+        prefer_suspend: bool,
+    ) -> Self {
+        Self {
+            max_timer_frequency,
+            allow_background_js,
+            allow_wasm,
+            allow_workers,
+            prefer_suspend,
+        }
+    }
+}
+
+/// Maps a budget + pressure signal into advisory hints.
+///
+/// This mapping is monotonic: Severe ⊆ Moderate ⊆ Low.
+pub fn map_execution_hints(
+    budget: ExecutionBudget,
+    pressure: MemoryPressure,
+) -> ExecutionBudgetHints {
+    const TIMER_20HZ: Duration = Duration::from_millis(50);
+    const TIMER_10HZ: Duration = Duration::from_millis(100);
+    const TIMER_4HZ: Duration = Duration::from_millis(250);
+    const TIMER_2HZ: Duration = Duration::from_millis(500);
+    const TIMER_1HZ: Duration = Duration::from_millis(1000);
+    const TIMER_0_5HZ: Duration = Duration::from_millis(2000);
+
+    match budget.tier {
+        BudgetTier::Foreground => match pressure {
+            MemoryPressure::Low | MemoryPressure::Moderate => ExecutionBudgetHints::new(
+                None,
+                true,
+                true,
+                true,
+                false,
+            ),
+            MemoryPressure::Severe => ExecutionBudgetHints::new(
+                Some(TIMER_20HZ),
+                true,
+                false,
+                false,
+                false,
+            ),
+        },
+        BudgetTier::VisibleBackground => match pressure {
+            MemoryPressure::Low => ExecutionBudgetHints::new(
+                Some(TIMER_10HZ),
+                true,
+                true,
+                true,
+                false,
+            ),
+            MemoryPressure::Moderate => ExecutionBudgetHints::new(
+                Some(TIMER_4HZ),
+                true,
+                false,
+                false,
+                false,
+            ),
+            MemoryPressure::Severe => ExecutionBudgetHints::new(
+                Some(TIMER_2HZ),
+                false,
+                false,
+                false,
+                true,
+            ),
+        },
+        BudgetTier::IdleBackground => match pressure {
+            MemoryPressure::Low => ExecutionBudgetHints::new(
+                Some(TIMER_2HZ),
+                false,
+                false,
+                false,
+                true,
+            ),
+            MemoryPressure::Moderate => ExecutionBudgetHints::new(
+                Some(TIMER_1HZ),
+                false,
+                false,
+                false,
+                true,
+            ),
+            MemoryPressure::Severe => ExecutionBudgetHints::new(
+                Some(TIMER_0_5HZ),
+                false,
+                false,
+                false,
+                true,
+            ),
+        },
+    }
+}
+
 /// Engine-facing hooks used by the scheduler without exposing engine types.
 pub trait EngineScheduler {
     /// Applies a tab state transition at the engine level.
@@ -53,6 +169,11 @@ pub trait EngineScheduler {
 
     /// Applies a budget to the engine for the given tab.
     fn apply_execution_budget(&self, tab: TabId, budget: ExecutionBudget);
+
+    /// Applies advisory execution hints for the given tab.
+    ///
+    /// These are intent signals only; the engine may ignore them to preserve compatibility.
+    fn apply_execution_hints(&self, tab: TabId, hints: ExecutionBudgetHints);
 }
 
 /// Interface for governing JavaScript execution without rewriting scripts.
@@ -72,6 +193,7 @@ pub struct ExecutionGovernor {
     engine: Rc<dyn EngineScheduler>,
     states: RefCell<HashMap<TabId, TabState>>,
     budgets: RefCell<HashMap<TabId, ExecutionBudget>>,
+    hints: RefCell<HashMap<TabId, ExecutionBudgetHints>>,
     effective_states: RefCell<HashMap<TabId, TabState>>,
     last_global_input: Cell<Instant>,
     last_idle_burst: Cell<Instant>,
@@ -87,6 +209,7 @@ impl ExecutionGovernor {
             engine,
             states: RefCell::new(HashMap::new()),
             budgets: RefCell::new(HashMap::new()),
+            hints: RefCell::new(HashMap::new()),
             effective_states: RefCell::new(HashMap::new()),
             last_global_input: Cell::new(now),
             last_idle_burst: Cell::new(now),
@@ -226,6 +349,8 @@ impl ExecutionGovernor {
             }
 
             self.apply_budget(tab, budget);
+            let hints = map_execution_hints(budget, pressure);
+            self.apply_hints(tab, hints);
 
             if let Some(previous) = effective_states.get(&tab) {
                 if *previous != effective {
@@ -249,12 +374,24 @@ impl ExecutionGovernor {
         budgets.insert(tab, budget);
         self.engine.apply_execution_budget(tab, budget);
     }
+
+    fn apply_hints(&self, tab: TabId, hints: ExecutionBudgetHints) {
+        let mut hints_map = self.hints.borrow_mut();
+        if let Some(previous) = hints_map.get(&tab) {
+            if *previous == hints {
+                return;
+            }
+        }
+        hints_map.insert(tab, hints);
+        self.engine.apply_execution_hints(tab, hints);
+    }
 }
 
 impl JSExecutionGovernor for ExecutionGovernor {
     fn set_budget(&self, tab: TabId, budget: ExecutionBudget) {
-        self.budgets.borrow_mut().insert(tab, budget);
-        self.engine.apply_execution_budget(tab, budget);
+        self.apply_budget(tab, budget);
+        let hints = map_execution_hints(budget, self.memory_pressure.get());
+        self.apply_hints(tab, hints);
     }
 
     fn on_tab_state_changed(&self, tab: TabId, state: TabState) {

@@ -14,3 +14,4 @@ webkit6 = "0.5"
 engine = { path = "../engine", package = "owl-engine" }
 scheduler = { path = "../scheduler", package = "owl-scheduler" }
 tabs = { path = "../tabs", package = "owl-tabs" }
+memory = { path = "../memory", package = "owl-memory" }
