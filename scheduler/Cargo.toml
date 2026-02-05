@@ -1,0 +1,11 @@
+[package]
+name = "owl-scheduler"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+description = "JavaScript execution governor interfaces for OwL Browser."
+
+[dependencies]
+tabs = { path = "../tabs", package = "owl-tabs" }

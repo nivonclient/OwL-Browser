@@ -7,6 +7,8 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
+use std::net::IpAddr;
+use url::Url;
 use webkit6::prelude::*;
 
 const APP_ID: &str = "com.owl.browser";
@@ -489,15 +491,120 @@ fn load_url(webview: &webkit6::WebView, url: &str, home_uri: &str) {
 
 fn normalize_url(input: &str) -> String {
     let trimmed = input.trim();
+    
+    // Empty input → home
     if trimmed.is_empty() {
         return "owl://home".to_string();
     }
-
-    if trimmed.contains("://") || trimmed.starts_with("about:") || trimmed.starts_with("owl://") {
-        trimmed.to_string()
-    } else {
-        format!("https://{trimmed}")
+    
+    // Already has a scheme → return as-is (but validate)
+    if trimmed.contains("://") || trimmed.starts_with("about:") {
+        // Validate URL if possible
+        if let Ok(parsed) = Url::parse::<&str>(trimmed) {
+            return parsed.to_string();
+        }
+        return trimmed.to_string();
     }
+    
+    // Special owl:// protocol shortcuts
+    if trimmed.starts_with("owl://") {
+        return trimmed.to_string();
+    }
+    
+    // Common protocol shortcuts
+    match trimmed {
+        s if s.starts_with("localhost") || s.starts_with("127.0.0.1") => {
+            return format!("http://{}", trimmed);
+        }
+        _ => {}
+    }
+    
+    // Contains spaces → search query
+    if trimmed.contains(' ') {
+        return build_search_url(trimmed);
+    }
+    
+    // IP address detection (v4 or v6)
+    if is_ip_address(trimmed) {
+        return format!("http://{}", trimmed);
+    }
+    
+    // Check for port number (localhost:3000, example.com:8080)
+    if trimmed.contains(':') && !trimmed.starts_with('[') {
+        if let Some((domain, port)) = trimmed.split_once(':') {
+            if port.parse::<u16>().is_ok() {
+                let scheme = if domain == "localhost" || domain.starts_with("127.") {
+                    "http"
+                } else {
+                    "https"
+                };
+                return format!("{}://{}", scheme, trimmed);
+            }
+        }
+    }
+    
+    // Common TLDs that are definitely domains
+    const COMMON_TLDS: &[&str; 15] = &[
+        ".com", ".org", ".net", ".edu", ".gov", ".io", ".co", ".ai",
+        ".dev", ".app", ".tech", ".blog", ".shop", ".online", ".site"
+    ];
+    
+    let lower = trimmed.to_lowercase();
+    let has_common_tld = COMMON_TLDS.iter().any(|tld| lower.ends_with(tld));
+    
+    // Has dot and common TLD → likely a domain
+    if trimmed.contains('.') && has_common_tld {
+        return format!("https://{}", trimmed);
+    }
+    
+    // Has dot but uncommon/no TLD → check if valid domain structure
+    if trimmed.contains('.') {
+        // Check if it looks like a domain (alphanumeric + hyphens)
+        let parts: Vec<&str> = trimmed.split('.').collect();
+        if parts.len() >= 2 && parts.iter().all(|p| is_valid_domain_part(p)) {
+            return format!("https://{}", trimmed);
+        }
+    }
+    
+    // Single word without dots → could be intranet or search
+    // Check if it's a valid hostname pattern
+    if is_valid_hostname(trimmed) && trimmed.len() > 2 {
+        // Could be intranet, but safer to search
+        // For intranet support, you might want to make this configurable
+        return build_search_url(trimmed);
+    }
+    
+    // Default: treat as search query
+    build_search_url(trimmed)
+}
+
+fn build_search_url(query: &str) -> String {
+    format!("https://duckduckgo.com/?q={}", urlencoding::encode(query))
+}
+
+fn is_ip_address(s: &str) -> bool {
+    // Remove port if present
+    let addr = s.split(':').next().unwrap_or(s);
+    
+    // Try parsing as IPv4 or IPv6
+    addr.parse::<IpAddr>().is_ok() || 
+    // IPv6 with brackets
+    (s.starts_with('[') && s.contains(']'))
+}
+
+fn is_valid_domain_part(part: &str) -> bool {
+    !part.is_empty() 
+        && part.chars().all(|c| c.is_alphanumeric() || c == '-')
+        && !part.starts_with('-')
+        && !part.ends_with('-')
+}
+
+fn is_valid_hostname(s: &str) -> bool {
+    !s.is_empty()
+        && s.len() <= 253
+        && s.chars().all(|c| c.is_alphanumeric() || c == '-')
+        && !s.starts_with('-')
+        && !s.ends_with('-')
 }
 
 fn open_session(state: &Rc<RefCell<BrowserState>>, slug: &str) -> Option<String> {

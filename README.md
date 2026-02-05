@@ -26,3 +26,7 @@ cargo run
 
 - The browser chrome (tabs, sidebar, omnibox) is rendered in HTML/CSS inside a dedicated WebKit webview.
 - The home page is fully local and ships with the binary; it makes zero network requests until you initiate a search.
+
+## Architecture
+
+See `docs/ARCHITECTURE.md` for the target architecture, process model, and JavaScript scheduling policy.
