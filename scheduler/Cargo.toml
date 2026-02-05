@@ -9,3 +9,6 @@ description = "JavaScript execution governor interfaces for OwL Browser."
 
 [dependencies]
 tabs = { path = "../tabs", package = "owl-tabs" }
+
+[features]
+diagnostics = []

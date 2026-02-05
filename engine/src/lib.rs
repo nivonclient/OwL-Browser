@@ -2,7 +2,10 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 use gtk::prelude::*;
-use scheduler::{EngineScheduler, ExecutionBudget, ExecutionBudgetHints};
+use scheduler::{
+    EngineExecutionFeedback, EngineFeedbackProvider, EngineScheduler, ExecutionBudget,
+    ExecutionBudgetHints,
+};
 use tabs::{TabId, TabState};
 use webkit6::prelude::*;
 
@@ -125,5 +128,13 @@ impl EngineScheduler for WebKitEngine {
 
     fn apply_execution_hints(&self, tab: TabId, hints: ExecutionBudgetHints) {
         <Self as EngineController>::apply_execution_hints(self, tab, hints);
+    }
+}
+
+impl EngineFeedbackProvider for WebKitEngine {
+    fn poll_execution_feedback(&self, _tab: TabId) -> EngineExecutionFeedback {
+        // WebKitGTK does not currently expose reliable per-tab signals for these fields.
+        // Return conservative defaults until the backend provides explicit counters.
+        EngineExecutionFeedback::default()
     }
 }
