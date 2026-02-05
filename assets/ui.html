@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <title>OwL UI</title>
+  <link rel="stylesheet" href="ui.css" />
+</head>
+<body>
+  <div id="app" class="chrome">
+    <header class="topbar" role="banner">
+      <div class="brand" aria-label="OwL Browser">
+        <div class="brand-text">
+          <span class="brand-mark">OwL</span>
+          <span class="brand-tag">Ultra. Quick. Light.</span>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button id="rail-toggle" class="rail-toggle" aria-label="Collapse sidebar"></button>
+        <button id="new-tab" class="ghost icon-button" aria-label="New tab" title="New tab">+</button>
+      </div>
+    </header>
+
+    <nav class="nav-bar" role="navigation" aria-label="Navigation">
+      <div class="nav-buttons">
+        <button id="nav-back" class="nav-button" aria-label="Back">Back</button>
+        <button id="nav-forward" class="nav-button" aria-label="Forward">Forward</button>
+        <button id="nav-reload" class="nav-button" aria-label="Reload">Reload</button>
+      </div>
+      <div id="loading-indicator" class="loading-indicator" role="progressbar" aria-hidden="true"></div>
+    </nav>
+
+    <div class="omnibox" role="search">
+      <input id="address" type="text" spellcheck="false" placeholder="Search or enter address" aria-label="Address bar" />
+      <button id="go" class="primary" aria-label="Go">Go</button>
+    </div>
+
+    <section class="tabs-shell" aria-label="Tab controls">
+      <div class="tabs" id="tabs" role="tree" aria-label="Tabs" tabindex="0"></div>
+    </section>
+
+    <footer class="footer">
+      <div class="tab-search">
+        <input id="tab-search" type="search" placeholder="Search tabs" aria-label="Search tabs" />
+      </div>
+      <div class="footer-main">
+        <button id="home" class="ghost" aria-label="Home">Home</button>
+        <div class="footer-hint">Ctrl+L to focus</div>
+      </div>
+    </footer>
+  </div>
+
+  <div id="palette-backdrop" class="palette-backdrop" aria-hidden="true"></div>
+  <div id="palette" class="palette" role="dialog" aria-label="Command palette" aria-hidden="true">
+    <div class="palette-header">
+      <input id="palette-input" type="text" placeholder="Type a command or URL" aria-label="Command palette input" />
+    </div>
+    <div id="palette-results" class="palette-results" role="listbox" aria-label="Commands"></div>
+  </div>
+
+  <div id="tab-menu" class="tab-menu" role="menu" aria-hidden="true">
+    <button type="button" data-action="pin" role="menuitem">Pin</button>
+    <button type="button" data-action="mute" role="menuitem">Mute</button>
+    <button type="button" data-action="unload" role="menuitem">Unload</button>
+  </div>
+
+  <script src="ui.js"></script>
+</body>
+</html>

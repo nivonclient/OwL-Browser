@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <title>OwL Home</title>
+  <link rel="stylesheet" href="home.css" />
+</head>
+<body>
+  <main class="page">
+    <section class="paper">
+      <div class="eyebrow">
+        <img class="home-icon" src="icon-128x128.ico" alt="" />
+        <span>OwL Browser</span>
+      </div>
+      <h1>Quiet by design.</h1>
+      <p class="subtitle">A calm start for focused sessions. Type, breathe, continue.</p>
+
+      <div class="search">
+        <input id="search" type="text" placeholder="Search the web or type an address" aria-label="Search" />
+        <button id="search-btn">Search</button>
+      </div>
+
+      <div class="focus-toggle">
+        <label>
+          <input id="focus-mode" type="checkbox" />
+          Focus mode
+        </label>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h2>Pinned</h2>
+          <ul class="link-list">
+            <li><button data-url="https://docs.fedoraproject.org">Docs</button></li>
+            <li><button data-url="https://developer.gnome.org">Design System</button></li>
+            <li><button data-url="https://mail.google.com">Inbox</button></li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2>Recent Sessions</h2>
+          <ul class="link-list">
+            <li><button data-session="research-notes">Research notes</button></li>
+            <li><button data-session="release-planning">Release planning</button></li>
+            <li><button data-session="wayland-checklist">Wayland checklist</button></li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2>Recently Closed</h2>
+          <ul class="link-list">
+            <li><button data-url="https://webkitgtk.org">Design review</button></li>
+            <li><button data-url="https://www.rust-lang.org">Benchmark notes</button></li>
+            <li><button data-url="https://fedoraproject.org">Reading list</button></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="home.js"></script>
+</body>
+</html>
